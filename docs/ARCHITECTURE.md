@@ -2,53 +2,61 @@
 
 ## Vision General
 
-Aplicacion SPA (Single Page Application) estatica desplegada en GitHub Pages para gestionar horarios de conservatorios de musica. No tiene backend; todo el estado se almacena en localStorage del navegador, con export/import a Excel como mecanismo de backup y comparticion.
+Aplicacion para gestionar horarios de conservatorios de musica. Tres targets de distribucion comparten el mismo codigo React:
 
-## Diagrama de Componentes
+| Target | Como llega al usuario | Acceso a disco | Sync con MCP |
+|--------|----------------------|----------------|--------------|
+| **GitHub Pages (PWA)** | URL web, instalable | No (import/export manual) | Manual |
+| **Tauri** (futuro) | .dmg/.exe descargable | Si (auto-sync) | Automatico |
+| **MCP Server** | Claude Desktop / Claude Code | Si (JSON directo) | Es el MCP |
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                            App                                │
-│  ┌──────────┐  ┌────────────────────────┐  ┌──────────────┐ │
-│  │ Sidebar  │  │     Content Area       │  │ FranjaPanel  │ │
-│  │          │  │                        │  │ (condicional)│ │
-│  │ Logo+    │  │  Vista activa segun    │  │              │ │
-│  │ Nombre   │  │  vistaActual:          │  │ Crear/editar │ │
-│  │          │  │                        │  │ franjas con  │ │
-│  │ Scenario │  │  - VistaGeneral        │  │ prellenado   │ │
-│  │ Selector │  │    └ GridToolbar       │  │              │ │
-│  │          │  │    └ ScheduleGrid      │  │ Toggle:      │ │
-│  │ Nav Menu │  │  - VistaAula           │  │ Clase/Ocup.  │ │
-│  │ (7 items)│  │    └ WeekGrid          │  │              │ │
-│  │          │  │  - VistaDocente         │  │ Selects:     │ │
-│  │ Sub-items│  │    └ HorasCards        │  │ asig/docente │ │
-│  │ (expand) │  │    └ WeekGrid          │  │ aula/dia/hora│ │
-│  │          │  │  - VistaAsignatura      │  │              │ │
-│  │ Credits  │  │  - VistaValidaciones    │  └──────────────┘ │
-│  │ v0.1.0   │  │  - VistaHerramientas   │                    │
-│  └──────────┘  │  - VistaConfig          │                    │
-│                │    └ 7 tabs             │                    │
-│                └────────────────────────┘                    │
-└──────────────────────────────────────────────────────────────┘
-```
-
-## Flujo de Datos
+## Diagrama del Sistema
 
 ```
-Usuario interactua (click, drag, formulario)
-         │
-         ▼
-Componente React llama accion del store
-         │
-         ▼
-Zustand Store (con Immer para mutaciones inmutables)
-         │
-         ├──► localStorage (persist middleware, key: contratiempo-storage)
-         │
-         └──► Re-render de componentes suscritos via selectores
-                    │
-                    └──► Validaciones se recalculan (useMemo en VistaValidaciones)
+┌─────────────────────────────────────────────────────┐
+│                   Navegador / Tauri                   │
+│                                                       │
+│  ┌──────────┐  ┌─────────────────────┐  ┌─────────┐ │
+│  │ Sidebar  │  │    Content Area     │  │ Franja  │ │
+│  │          │  │                     │  │ Panel   │ │
+│  │ Logo     │  │  Vista activa:      │  │         │ │
+│  │ Scenario │  │  General/Aula/      │  │ Crear/  │ │
+│  │ Nav (7)  │  │  Docente/Asig/      │  │ Editar  │ │
+│  │ SubItems │  │  Valid/Herram/       │  │ franjas │ │
+│  │ Credits  │  │  Config             │  │         │ │
+│  └──────────┘  └─────────────────────┘  └─────────┘ │
+│                                                       │
+│  ┌─ Zustand Store ──────────────────────────────────┐ │
+│  │ datos maestros + escenarios + UI state           │ │
+│  └──────────────────────┬───────────────────────────┘ │
+│                         │                             │
+│              ┌──────────┴──────────┐                  │
+│              │  localStorage       │                  │
+│              │  (contratiempo-     │                  │
+│              │   storage, v1)      │                  │
+│              └─────────────────────┘                  │
+└───────────────────────┬───────────────────────────────┘
+                        │ Export/Import JSON
+                        ▼
+              ~/.contratiempo/data.json  (SyncData v2)
+                        ▲
+                        │ Lee/escribe (atomico)
+┌───────────────────────┴───────────────────────────────┐
+│              MCP Server (stdio)                        │
+│  30 tools: CRUD + Escenarios + Consultas              │
+│  Usado por: Claude Desktop, Claude Code               │
+└───────────────────────────────────────────────────────┘
 ```
+
+## Codigo Compartido (shared/)
+
+Para evitar duplicar tipos y logica entre la app React y el MCP server, el directorio `shared/` contiene:
+
+- **shared/types.ts** — Todas las interfaces de dominio (Aula, Docente, Asignatura, TipoOcupacion, Escenario, Franja, etc.). La app React re-exporta desde `src/types/index.ts` y añade tipos solo-UI.
+- **shared/timeUtils.ts** — Funciones puras de tiempo (horaAMinutos, seSolapan, formatearDuracion, etc.). La app re-exporta desde `src/services/timeUtils.ts`.
+- **shared/sync.ts** — SyncData interface (version 2), funciones de validacion y creacion de datos vacios.
+
+Ambos tsconfigs (app y MCP) incluyen `shared/` en su compilacion.
 
 ## Store (Zustand + Immer + Persist)
 
@@ -60,27 +68,27 @@ useAppStore
 │   ├── asignaturas: Asignatura[]
 │   └── tiposOcupacion: TipoOcupacion[]
 ├── Escenarios
-│   ├── escenarios: Escenario[] (cada uno con franjas[] y configuracion)
+│   ├── escenarios: Escenario[]
 │   └── escenarioActivoId: string
 ├── UI - Navegacion
-│   ├── vistaActual: VistaId (7 vistas posibles)
+│   ├── vistaActual: VistaId
 │   └── filtros: { aulaId?, docenteId?, asignaturaId?, sede?, piso?, aulasSeleccionadas? }
 ├── UI - Cuadricula
 │   ├── modoVistaCuadricula: 'dias-aulas' | 'aulas-dias'
 │   ├── granularidadVista: 30 | 60
-│   └── diaSeleccionado: DiaSemana (para modo dias-aulas)
+│   └── diaSeleccionado: DiaSemana
 ├── UI - Panel Lateral
 │   ├── panelFranjaAbierto: boolean
 │   ├── franjaEditandoId: string | null
 │   └── panelPrellenado: { dia?, horaInicio?, aulaId? } | null
-├── Acciones CRUD (add/update/remove por entidad)
+├── Acciones CRUD (add/update/remove × entidad)
 ├── Acciones Escenario (add/update/remove/duplicar/setActivo)
 ├── Acciones Franja (add/update/remove en escenario activo)
 └── Acciones UI (setVista, setFiltros, setModoVista, setGranularidad, etc.)
 
 Selectores derivados:
-├── useEscenarioActivo() → Escenario actual
-└── useFranjasActivas() → Franja[] del escenario activo
+├── useEscenarioActivo() → Escenario
+└── useFranjasActivas() → Franja[]
 ```
 
 ## Modelo de Datos
@@ -88,130 +96,139 @@ Selectores derivados:
 ### Relaciones
 
 ```
-Aula (1) ──────── (N) FranjaClase (aulaId obligatorio)
-Aula (1) ──────── (N) FranjaOcupacion (aulaId opcional)
-Docente (1) ───── (N) Franja (clase u ocupacion)
-Asignatura (1) ── (N) FranjaClase
+Aula (1) ──── (N) FranjaClase (aulaId obligatorio)
+Aula (1) ──── (N) FranjaOcupacion (aulaId opcional)
+Docente (1) ─ (N) Franja (todas tienen docenteId)
+Asignatura (1) (N) FranjaClase
 TipoOcupacion (1) (N) FranjaOcupacion
-Escenario (1) ─── (N) Franja (cada escenario tiene su coleccion)
+Escenario (1) (N) Franja
 ```
 
-### Granularidad Temporal
-- Bloque minimo almacenado: 30 minutos
-- Vista soporta 30 min o 1 hora (toggle en UI)
-- Horas como strings "HH:mm" (nunca Date ni timestamps)
-- Rango configurable por escenario (default 08:00-22:00)
+### Entidades Maestras (shared/types.ts)
 
-### Ratio y Capacidad
-- Cada asignatura define un `ratio` (alumnos por grupo)
-- Capacidad total = numero de franjas colocadas × ratio
-- Una franja = un grupo de alumnos
+| Entidad | Campos clave | Notas |
+|---------|-------------|-------|
+| Aula | id, codigo, nombre, tipo, capacidad, sede, piso, atributos[], reservable, gestionadaPor, observaciones | 15 campos total, autocompletado sede/piso/tipo |
+| Docente | id, nombre, especialidad, horasContratadas, disponibilidad?, departamento? | Disponibilidad = soft constraint (aviso) |
+| Asignatura | id, nombre, alias, ratio, turnosSemanales (1-3), duracionTurno (min), atributosRequeridos[] | Alias para compatibilidad Excel |
+| TipoOcupacion | id, nombre, requiereAula, esLectiva | Con/sin aula |
 
-## Sistema de Cuadricula
+### SyncData (shared/sync.ts)
 
-### Modos de vista
+Formato JSON que sirve de puente entre app, Tauri y MCP:
 
-**Modo Dias > Aulas** (`dias-aulas`):
-- Tabs superiores: Lunes | Martes | Miercoles | Jueves | Viernes
-- Columnas: aulas filtradas (puede haber 60-70, se filtran por sede/piso)
-- Filas: franjas horarias del dia seleccionado
+```typescript
+{ version: 2, lastModified: ISO string, escenarioActivoId, aulas[], docentes[], asignaturas[], tiposOcupacion[], escenarios[] }
+```
 
-**Modo Aulas > Dias** (`aulas-dias`):
-- Sin tabs de dia
-- Columnas agrupadas: [Aula 1: L|M|X|J|V] [Aula 2: L|M|X|J|V] ...
-- Filas: franjas horarias
+Archivo en disco: `~/.contratiempo/data.json`. Conflicto: last-write-wins via lastModified.
+
+## Cuadricula
+
+### Dos modos de vista
+- **Dias>Aulas**: tabs L/M/X/J/V, columnas = aulas filtradas por sede/piso
+- **Aulas>Dias**: columnas agrupadas [Aula: L|M|X|J|V]
 
 ### Granularidad
-- 30 min: cada fila = 30 min, franjas usan rowspan proporcional a su duracion
-- 1 hora: cada fila = 1h, franjas de 30 min se muestran compactas
+- 30 min: cada fila = 30 min, franjas con rowspan
+- 1 hora: cada fila = 1h, franjas de 30 min compactas
 
 ### Drag & Drop (@dnd-kit)
-- FranjaCard: `useDraggable` con grip handle visible en hover
-- DroppableCell: `useDroppable` con highlight visual
-- DragOverlay: preview flotante durante arrastre
-- Al soltar: actualiza dia/hora/aula preservando duracion original
-- PointerSensor con distance: 5 (evita drag accidental en click)
-- Implementado tanto en ScheduleGrid (vista general) como en WeekGrid (vistas individuales)
+- FranjaCard: useDraggable + grip handle
+- DroppableCell: useDroppable + highlight
+- DragOverlay: preview flotante
+- On drop: preserva duracion, actualiza dia/hora/aula
+- PointerSensor distance: 5
 
-### Panel Lateral (FranjaPanel)
-- Click en celda vacia: abre con dia/hora/aula prellenados
-- Click en franja existente: abre en modo edicion
+### Panel lateral (FranjaPanel)
+- Click celda vacia → crear con prellenado (dia, hora, aula)
+- Click franja → editar
 - Toggle Clase/Ocupacion
-- Selects encadenados para asignatura/docente/aula/dia/hora/duracion
+- Muestra hora fin calculada
 
-## Validaciones
+## Validaciones y Herramientas
 
-Servicios en `services/validators/`:
-
-| Servicio | Funcion | Produce |
-|----------|---------|---------|
+| Servicio | Funcion | Tipo |
+|----------|---------|------|
 | conflictDetector | detectarConflictos() | Errores: solapamiento aula, docente duplicado |
-| hoursCalculator | calcularHorasDocentes() | Datos: horas por docente (clases, ocupaciones, total) |
-| hoursCalculator | generarAvisosHoras() | Avisos: exceso/faltan horas, huecos entre clases |
-| capacityCalculator | calcularCapacidadAsignaturas() | Datos: franjas, horas, capacidad por asignatura |
-| gapFinder | buscarHuecosAulas() | Datos: huecos libres en aulas |
-| gapFinder | buscarHuecosCombinados() | Datos: huecos donde docente + aula libres |
+| hoursCalculator | calcularHorasDocentes() | Datos: horas por docente |
+| hoursCalculator | generarAvisosHoras() | Avisos: exceso/faltan horas, huecos |
+| capacityCalculator | calcularCapacidadAsignaturas() | Datos: franjas × ratio |
+| gapFinder | buscarHuecosAulas() | Huecos libres en aulas |
+| gapFinder | buscarHuecosCombinados() | Huecos docente+aula libres |
 
 ## Excel Import/Export
 
-Servicios en `services/excel/`:
+| Funcion | Formato | Comportamiento |
+|---------|---------|---------------|
+| exportar[Entidad] | .xlsx individual | Columnas legibles en español |
+| importar[Entidad] | .xlsx individual | AÑADE a datos existentes |
+| exportarEscenario | .xlsx multi-hoja | Franjas con nombres + metadata |
+| exportarBackupTotal | .xlsx completo | Datos maestros + escenarios con IDs |
+| importarBackupTotal | .xlsx completo | REEMPLAZA todo el estado |
 
-### Exportacion (excelExporter.ts)
-- **Individual**: exportarAulas/Docentes/Asignaturas/Ocupaciones → archivos .xlsx separados con columnas legibles
-- **Escenario**: exportarEscenario → hoja "Franjas" con nombres resueltos + hoja "Info" metadata
-- **Backup total**: exportarBackupTotal → hojas de datos maestros (serializados con IDs) + hoja por escenario + hoja "_Escenarios" con metadata y config JSON
+Sync JSON: exportJSON/importJSON via File System Access API o Tauri filesystem.
 
-### Importacion (excelImporter.ts)
-- **Individual**: importarAulas/Docentes/Asignaturas/Ocupaciones → AÑADE a datos existentes (genera nuevos UUIDs)
-- **Backup total**: importarBackupTotal → REEMPLAZA todo el estado (preserva IDs del backup)
+## MCP Server
 
-### Formato columnas Excel individuales
-- Aulas: Codigo, Nombre, Descripcion, Tipo, Reservable, Gestionada por, Observaciones, Sede, Piso, Capacidad, Atributos
-- Docentes: Nombre, Especialidad, Horas/semana, Departamento
-- Asignaturas: Nombre, Alias, Ratio, Turnos, Duracion, Tipo, Requisitos Aula
-- Ocupaciones: Nombre, Requiere Aula, Es Lectiva
+Paquete independiente en `mcp-server/`. Usa @modelcontextprotocol/sdk con StdioServerTransport.
+
+### 30 Tools
+
+**CRUD (crudTools.ts, 16):** listar/crear/actualizar/eliminar × {aulas, docentes, asignaturas, ocupaciones}. Todas buscan por nombre o ID.
+
+**Escenarios (scenarioTools.ts, 9):** listar_escenarios, crear_escenario, duplicar_escenario, activar_escenario, listar_franjas (filtros: dia, docente, aula), crear_franja_clase, crear_franja_ocupacion, eliminar_franja.
+
+**Consultas (queryTools.ts, 5):** ver_horario_docente, ver_horario_aula, validar_horario (errores+avisos), buscar_huecos (aula/docente/duracion), resumen_horas_docentes (tabla).
+
+### Storage
+Lee/escribe `~/.contratiempo/data.json`. Escritura atomica (tmp → rename). Crea directorio si no existe.
+
+## PWA
+
+- **manifest.json**: standalone, theme #1e40af, scope /ContraTiempo/, iconos 192+512
+- **sw.js**: network-first para navegacion, cache-first para assets, limpieza de caches antiguos
+- **PWAUpdatePrompt.tsx**: registra SW, detecta nuevas versiones, toast "Nueva version disponible" con boton Actualizar, recarga al activar nuevo worker
+- Solo activo en navegador (isBrowser()), no en Tauri
+
+## Deteccion de Entorno
+
+`src/lib/environment.ts` detecta si la app corre en Tauri o navegador:
+- `isTauri()`: busca `__TAURI__` o `__TAURI_INTERNALS__` en window
+- `isBrowser()`: negacion de isTauri
+- Usado por: fileSync factory, PWAUpdatePrompt, sidebar badge
 
 ## Decisiones de Diseno
 
 | Decision | Alternativa | Razon |
 |----------|-------------|-------|
-| Zustand + Immer | Redux, Context | Menos boilerplate, persist nativo, performance |
-| Un unico store | Multiples stores | Datos maestros compartidos entre escenarios |
-| Horas como "HH:mm" | Timestamps, Date | Simple, sin timezone, facil de comparar |
-| UUID para IDs | Autoincrement | No hay servidor, no hay colisiones |
-| Datos maestros compartidos | Por escenario | Evita duplicar aulas/docentes al crear escenarios |
-| Tailwind CSS 4 | CSS Modules, Styled | Rapido prototipado, consistente, ligero |
-| @dnd-kit | react-beautiful-dnd | Mas moderno, mejor soporte accesibilidad, activo |
-| View-switching via estado | React Router | SPA simple, no necesita URLs persistentes |
-| color-scheme: light | dark mode | Simplifica UI, evita problemas de contraste |
-| SheetJS (xlsx) | ExcelJS, csv | Soporta .xlsx nativo, sin servidor, amplio soporte |
+| Zustand + Immer | Redux, Context | Menos boilerplate, persist nativo |
+| Store unico | Multiples stores | Datos maestros compartidos entre escenarios |
+| shared/ directory | Copiar tipos | Unica fuente de verdad app + MCP |
+| "HH:mm" strings | Date, timestamp | Simple, sin timezone |
+| UUID v4 | Autoincrement | Sin servidor, sin colisiones |
+| @dnd-kit | react-beautiful-dnd | Moderno, accesible, activo |
+| SW manual | vite-plugin-pwa | Plugin no soporta Vite 8 |
+| SyncData v2 | localStorage directo | Formato compartible MCP/Tauri/browser |
+| Escritura atomica | writeFile directo | Previene lecturas parciales por file watcher |
+| color-scheme: light | Dark mode | Simplifica UI |
 
 ## Guia para Nuevas Funcionalidades
 
-1. **Nuevo tipo de dato**: añadir a `types/index.ts`, actualizar store si necesita CRUD
-2. **Nueva accion del store**: añadir a `AppActions` interface y a la implementacion en `useAppStore.ts`
-3. **Nuevo servicio de calculo**: crear en `services/` (validators/ o nuevo directorio)
-4. **Nueva vista**: crear en `components/views/`, importar y conectar en `MainLayout.tsx`, añadir a NavItem en `Sidebar.tsx`
-5. **Nuevo CRUD de datos maestros**: crear en `components/masters/`, añadir tab en `VistaConfig.tsx`
-6. **Nuevo componente de cuadricula**: crear en `components/grid/`, si necesita DnD usar useDraggable/useDroppable
-7. **Nueva herramienta**: añadir tab en `VistaHerramientas.tsx`
-8. **Nueva validacion**: añadir logica en servicio de validators existente o nuevo, conectar en `VistaValidaciones.tsx`
+1. **Nuevo tipo de dato**: añadir a `shared/types.ts`, actualizar store, actualizar SyncData si persiste
+2. **Nueva accion store**: añadir a AppActions + implementacion en useAppStore.ts
+3. **Nuevo servicio**: crear en `src/services/` (o `shared/` si lo usa el MCP)
+4. **Nueva vista**: crear en `components/views/`, conectar en MainLayout.tsx, añadir a Sidebar NavItems
+5. **Nuevo CRUD**: crear en `components/masters/`, añadir tab en VistaConfig.tsx
+6. **Nueva herramienta**: añadir tab en VistaHerramientas.tsx
+7. **Nueva validacion**: añadir en validators/, conectar en VistaValidaciones.tsx
+8. **Nueva tool MCP**: añadir en mcp-server/src/ (crudTools, scenarioTools o queryTools), registrar en index.ts
 
-## Estado del Proyecto
+## Pendiente
 
-Todas las 8 fases de desarrollo completadas (v0.1.0):
-- F1: Fundacion (tipos, store, layout, CRUD)
-- F2: Cuadricula (2 modos, granularidad, filtros, panel)
-- F3: Vistas individuales (aula, docente, asignatura)
-- F4: Drag & Drop (@dnd-kit)
-- F5: Validaciones y herramientas
-- F6: Escenarios multiples (CRUD, duplicar, comparar)
-- F7: Excel import/export
-- F8: Branding ContraTiempo, fix estilos, creditos
-
-### Pendiente para futuras versiones
-- i18n completo (react-i18next preparado pero strings hardcoded en español)
-- Responsive / adaptacion movil
-- Undo/redo
-- Validaciones adicionales: atributos de aula requeridos, disponibilidad docente, turnos faltantes
-- Compatibilidad import/export con app externa de horarios (formato a definir)
+- **Tauri**: wrapper desktop con filesystem access + file watcher (requiere Rust toolchain)
+- **i18n**: react-i18next preparado, falta implementar strings
+- **Responsive**: adaptacion movil
+- **Undo/redo**
+- **Validaciones**: atributos aula requeridos, disponibilidad docente, turnos faltantes
+- **Import/export app externa**: formato a definir por usuario
