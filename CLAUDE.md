@@ -28,6 +28,10 @@ npm run dev          # Vite dev server, puerto 5173, base /ContraTiempo/
 npm run build        # tsc -b && vite build → dist/
 npm run preview      # Preview del build
 
+# Tauri (app escritorio)
+npm run tauri:dev    # Abre ventana nativa (requiere npm run dev en paralelo)
+npm run tauri:build  # Genera .dmg/.exe
+
 # MCP Server
 cd mcp-server
 npm install          # Solo la primera vez

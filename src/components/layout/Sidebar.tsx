@@ -157,7 +157,7 @@ export function Sidebar() {
       {/* Footer con creditos */}
       <div className="border-t border-grid-border px-3 py-2.5 text-[10px] text-secondary leading-relaxed">
         <div className="flex items-center justify-between mb-1">
-          <span className="font-medium">v0.1.0</span>
+          <span className="font-medium">v0.2.0</span>
           <div className="flex items-center gap-2">
             <a
               href={REPO_URL}

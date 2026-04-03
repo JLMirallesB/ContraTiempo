@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicedoc/tauri-schema/main/tauri.conf.json",
   "productName": "ContraTiempo",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "identifier": "com.contratiempo.app",
   "build": {
     "devUrl": "http://localhost:5173",

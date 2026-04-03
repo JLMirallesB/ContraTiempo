@@ -7,7 +7,7 @@ Aplicacion para gestionar horarios de conservatorios de musica. Tres targets de 
 | Target | Como llega al usuario | Acceso a disco | Sync con MCP |
 |--------|----------------------|----------------|--------------|
 | **GitHub Pages (PWA)** | URL web, instalable | No (import/export manual) | Manual |
-| **Tauri** (futuro) | .dmg/.exe descargable | Si (auto-sync) | Automatico |
+| **Tauri** | .dmg/.exe descargable | Si (auto-sync) | Automatico |
 | **MCP Server** | Claude Desktop / Claude Code | Si (JSON directo) | Es el MCP |
 
 ## Diagrama del Sistema
@@ -226,7 +226,6 @@ Lee/escribe `~/.contratiempo/data.json`. Escritura atomica (tmp → rename). Cre
 
 ## Pendiente
 
-- **Tauri**: wrapper desktop con filesystem access + file watcher (requiere Rust toolchain)
 - **i18n**: react-i18next preparado, falta implementar strings
 - **Responsive**: adaptacion movil
 - **Undo/redo**
