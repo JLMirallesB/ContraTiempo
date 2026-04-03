@@ -143,6 +143,35 @@ export function VistaImportExport() {
       <p className="mt-2 text-xs text-secondary">
         El backup total reemplaza todos los datos actuales (aulas, docentes, asignaturas, ocupaciones y escenarios).
       </p>
+
+      {/* Sync JSON */}
+      <h3 className="mt-6 mb-3 text-sm font-semibold text-gray-700">Sincronizacion JSON (MCP / Tauri)</h3>
+      <div className="flex gap-3">
+        <button
+          onClick={async () => {
+            const { exportJSON } = await import('@/services/fileSync');
+            await exportJSON();
+          }}
+          className="flex items-center gap-2 rounded-lg border border-grid-border bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          <Download size={16} className="text-primary" />
+          Exportar JSON
+        </button>
+        <button
+          onClick={async () => {
+            const { importJSON } = await import('@/services/fileSync');
+            const ok = await importJSON();
+            if (ok) alert('Datos cargados desde JSON.');
+          }}
+          className="flex items-center gap-2 rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:border-primary"
+        >
+          <Upload size={16} className="text-secondary" />
+          Importar JSON
+        </button>
+      </div>
+      <p className="mt-2 text-xs text-secondary">
+        Formato JSON compatible con el MCP Server y la app de escritorio Tauri.
+      </p>
     </div>
   );
 }

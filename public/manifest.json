@@ -1,0 +1,29 @@
+{
+  "name": "ContraTiempo",
+  "short_name": "ContraTiempo",
+  "description": "Gestor de horarios de conservatorio",
+  "start_url": "/ContraTiempo/",
+  "scope": "/ContraTiempo/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e40af",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
