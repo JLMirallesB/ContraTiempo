@@ -135,4 +135,8 @@ React 19 · TypeScript · Vite 8 · Zustand · Tailwind CSS 4 · @dnd-kit · She
 
 ## Licencia
 
-Este proyecto es de codigo abierto. Consulta el archivo LICENSE para mas detalles.
+© 2026 José Luis Miralles Bono ([jlmirall.es](https://jlmirall.es)) · joseluismirallesbono@gmail.com ·
+☕ [Invítame a una horchata](https://ko-fi.com/miralles)
+
+- **Código** (app web, app de escritorio Tauri y servidor MCP): [GNU AGPL v3](LICENSE).
+- **Contenidos** (textos, documentación, plantillas de ejemplo): [CC BY-SA 4.0](LICENSE-CONTENIDOS).

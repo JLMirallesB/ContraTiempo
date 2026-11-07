@@ -180,10 +180,26 @@ export function Sidebar() {
           </div>
         </div>
         <div>
-          Diseño: <span className="font-medium">JLMiralles</span>
+          Diseño:{' '}
+          <a href="https://jlmirall.es" target="_blank" rel="noopener noreferrer" className="font-medium hover:text-primary">
+            José Luis Miralles Bono
+          </a>
         </div>
         <div>
           Programación: <span className="font-medium">Claude Opus</span>
+        </div>
+        <div>
+          <a href="mailto:joseluismirallesbono@gmail.com" className="hover:text-primary">
+            joseluismirallesbono@gmail.com
+          </a>
+        </div>
+        <div className="mt-1 opacity-80">
+          Código{' '}
+          <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="license noopener noreferrer" className="underline hover:text-primary">AGPL v3</a>
+          {' · '}contenidos{' '}
+          <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.es" target="_blank" rel="license noopener noreferrer" className="underline hover:text-primary">CC BY-SA 4.0</a>
+          {' · '}
+          <a href={REPO_URL} target="_blank" rel="noopener noreferrer" className="underline hover:text-primary">código fuente</a>
         </div>
       </div>
     </aside>

@@ -2,7 +2,8 @@
 name = "contratiempo"
 version = "0.1.0"
 description = "ContraTiempo - Gestor de horarios de conservatorio"
-authors = ["JLMiralles"]
+authors = ["José Luis Miralles Bono"]
+license = "AGPL-3.0-only"
 edition = "2021"
 
 [lib]
